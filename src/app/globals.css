@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+/* 고구마마켓 색상 팔레트 — 고구마 속살(앰버/골드) + 껍질(퍼플) + 크림 배경 */
+@theme {
+  /* 고구마 속살: 메인 브랜드 / CTA */
+  --color-goguma-50: #fdf7ee;
+  --color-goguma-100: #f9ead0;
+  --color-goguma-200: #f2d09c;
+  --color-goguma-300: #ecb368;
+  --color-goguma-400: #e89a3c;
+  --color-goguma-500: #df7f1c;
+  --color-goguma-600: #c46415;
+  --color-goguma-700: #a34c15;
+  --color-goguma-800: #843e18;
+  --color-goguma-900: #6d3416;
+
+  /* 고구마 껍질: 퍼플 포인트 */
+  --color-skin-400: #9b6dc0;
+  --color-skin-500: #7c4d9e;
+  --color-skin-600: #693f87;
+  --color-skin-700: #573470;
+
+  /* 고구마 잎: 그린 보조 */
+  --color-leaf-500: #6fa25a;
+
+  /* 크림 배경 */
+  --color-cream: #fbf6ee;
+
+  /* 손글씨(필기체) 글꼴 */
+  --font-handwriting: "Gaegu", "Nanum Pen Script", cursive;
+}
+
+:root {
+  --background: #fbf6ee;
+  --foreground: #3a2a1d;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-handwriting);
+}
