@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/auth/actions";
+import { postImageUrl } from "@/lib/storage";
 import { GogumaLogo } from "./GogumaLogo";
 
 // 서버 컴포넌트: 현재 로그인 상태를 읽어 헤더를 그립니다.
@@ -12,13 +13,15 @@ export async function Header() {
   const userId = data?.claims?.sub as string | undefined;
 
   let nickname: string | null = null;
+  let avatarUrl: string | null = null;
   if (userId) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("nickname")
+      .select("nickname, avatar_url")
       .eq("id", userId)
       .single();
     nickname = profile?.nickname ?? null;
+    avatarUrl = profile?.avatar_url ?? null;
   }
 
   return (
@@ -41,9 +44,26 @@ export async function Header() {
 
         {userId ? (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-goguma-800">
-              <b className="font-semibold text-skin-600">{nickname}</b> 님
-            </span>
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 text-sm text-goguma-800 transition hover:bg-goguma-100"
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-goguma-200 bg-goguma-50 text-sm">
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={postImageUrl(avatarUrl)}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  "🙂"
+                )}
+              </span>
+              <span>
+                <b className="font-semibold text-skin-600">{nickname}</b> 님
+              </span>
+            </Link>
             <form action={logout}>
               <button
                 type="submit"

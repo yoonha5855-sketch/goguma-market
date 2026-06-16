@@ -8,6 +8,7 @@ import {
   isPostCategory,
 } from "@/lib/categories";
 import { GogumaLogo } from "@/components/GogumaLogo";
+import { StatusBadge } from "@/components/StatusBadge";
 
 type PostRow = {
   id: string;
@@ -17,6 +18,7 @@ type PostRow = {
   created_at: string;
   images: string[];
   category: string;
+  status: string;
   author: { nickname: string } | null;
   likes: { count: number }[];
   comments: { count: number }[];
@@ -35,7 +37,7 @@ export default async function PostsPage({
   let query = supabase
     .from("posts")
     .select(
-      "id, title, price, content, created_at, images, category, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
+      "id, title, price, content, created_at, images, category, status, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
     )
     .order("created_at", { ascending: false });
 
@@ -134,6 +136,7 @@ export default async function PostsPage({
                     </span>
                   </div>
                   <div className="mt-1 flex items-center gap-2">
+                    <StatusBadge status={post.status} size="sm" />
                     <span className="shrink-0 rounded-full bg-goguma-100 px-2 py-0.5 text-[11px] font-semibold text-goguma-700">
                       {categoryLabel(post.category)}
                     </span>

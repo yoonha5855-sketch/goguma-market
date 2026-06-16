@@ -8,6 +8,8 @@ import { CommentForm } from "./comment-form";
 import { PostOwnerActions } from "./post-owner-actions";
 import { CommentItem } from "./comment-item";
 import { PostGallery } from "./post-gallery";
+import { StatusBadge } from "@/components/StatusBadge";
+import { StatusChanger } from "@/app/posts/status-changer";
 
 type PostDetail = {
   id: string;
@@ -18,6 +20,7 @@ type PostDetail = {
   created_at: string;
   images: string[];
   category: string;
+  status: string;
   author: { nickname: string } | null;
   likes: { count: number }[];
   comments: { count: number }[];
@@ -43,7 +46,7 @@ export default async function PostDetailPage({
   const { data: post } = await supabase
     .from("posts")
     .select(
-      "id, author_id, title, price, content, created_at, images, category, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
+      "id, author_id, title, price, content, created_at, images, category, status, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
     )
     .eq("id", id)
     .maybeSingle<PostDetail>();
@@ -100,24 +103,40 @@ export default async function PostDetailPage({
 
       {/* 글 본문 */}
       <article className="rounded-2xl border border-goguma-100 bg-white p-6">
-        <Link
-          href={`/posts?category=${encodeURIComponent(post.category)}`}
-          className="inline-block rounded-full bg-goguma-100 px-3 py-1 text-xs font-semibold text-goguma-700 transition hover:bg-goguma-200"
-        >
-          {categoryLabel(post.category)}
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={post.status} />
+          <Link
+            href={`/posts?category=${encodeURIComponent(post.category)}`}
+            className="inline-block rounded-full bg-goguma-100 px-3 py-1 text-xs font-semibold text-goguma-700 transition hover:bg-goguma-200"
+          >
+            {categoryLabel(post.category)}
+          </Link>
+        </div>
         <h1 className="mt-2 text-2xl font-extrabold text-goguma-900">
           {post.title}
         </h1>
         <div className="mt-2 flex items-center gap-2 text-sm text-goguma-500">
-          <span className="font-medium text-skin-500">
+          <Link
+            href={`/profile/${post.author_id}`}
+            className="font-medium text-skin-500 hover:underline"
+          >
             {post.author?.nickname ?? "알 수 없음"}
-          </span>
+          </Link>
           <span>· {timeAgo(post.created_at)}</span>
         </div>
         <p className="mt-4 text-2xl font-bold text-goguma-600">
           {formatPrice(post.price)}
         </p>
+
+        {/* 작성자에게만: 거래 상태 바꾸기 */}
+        {isAuthor && (
+          <div className="mt-4 rounded-xl bg-goguma-50 p-3">
+            <p className="mb-2 text-xs font-semibold text-goguma-600">
+              거래 상태 바꾸기
+            </p>
+            <StatusChanger postId={post.id} current={post.status} />
+          </div>
+        )}
 
         {/* 사진 갤러리 (사진이 있을 때만) */}
         {post.images && post.images.length > 0 && (

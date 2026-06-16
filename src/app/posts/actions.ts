@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { POST_IMAGES_BUCKET, MAX_POST_IMAGES } from "@/lib/storage";
 import { isPostCategory, DEFAULT_CATEGORY } from "@/lib/categories";
+import { isPostStatus } from "@/lib/post-status";
 
 // 폼에서 넘어온 카테고리를 안전하게 읽어옵니다 (정해진 5개가 아니면 '기타').
 function readCategory(formData: FormData): string {
@@ -284,6 +285,33 @@ export async function deleteComment(
     .eq("author_id", userId);
 
   revalidatePath(`/posts/${postId}`);
+}
+
+// 거래 상태 변경 (거래가능 / 거래예약 / 거래종료)
+// 본인 글만 바꿀 수 있습니다(RLS). 댓글이 있어도 상태는 자유롭게 바꿀 수 있어요.
+export async function updatePostStatus(
+  postId: string,
+  status: string
+): Promise<{ error?: string } | void> {
+  const supabase = await createClient();
+  const userId = await getUserId();
+  if (!userId) return { error: "로그인이 필요해요." };
+
+  if (!isPostStatus(status)) {
+    return { error: "알 수 없는 거래 상태예요." };
+  }
+
+  const { error } = await supabase
+    .from("posts")
+    .update({ status })
+    .eq("id", postId)
+    .eq("author_id", userId);
+
+  if (error) return { error: "상태 변경에 실패했어요: " + error.message };
+
+  revalidatePath("/posts");
+  revalidatePath(`/posts/${postId}`);
+  revalidatePath(`/profile/${userId}`);
 }
 
 // 좋아요 토글 (이미 눌렀으면 취소, 아니면 추가)
