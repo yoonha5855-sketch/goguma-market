@@ -18,13 +18,9 @@ export function PostOwnerActions({
   const [pending, startTransition] = useTransition();
 
   function handleEdit() {
+    // 댓글이 있어도 수정 화면으로 갑니다.
+    // (글 내용 수정은 그 화면에서 막고, 사진은 바꿀 수 있게 안내합니다.)
     setError(null);
-    if (commentCount > 0) {
-      setError(
-        "댓글이 있는 글은 수정할 수 없어요. 댓글을 모두 삭제한 뒤 다시 시도해 주세요."
-      );
-      return;
-    }
     router.push(`/posts/${postId}/edit`);
   }
 

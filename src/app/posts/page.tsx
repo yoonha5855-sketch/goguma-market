@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice, timeAgo } from "@/lib/format";
+import { postImageUrl } from "@/lib/storage";
 import { GogumaLogo } from "@/components/GogumaLogo";
 
 type PostRow = {
@@ -9,6 +10,7 @@ type PostRow = {
   price: number;
   content: string;
   created_at: string;
+  images: string[];
   author: { nickname: string } | null;
   likes: { count: number }[];
   comments: { count: number }[];
@@ -19,7 +21,7 @@ export default async function PostsPage() {
   const { data: posts } = await supabase
     .from("posts")
     .select(
-      "id, title, price, content, created_at, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
+      "id, title, price, content, created_at, images, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
     )
     .order("created_at", { ascending: false })
     .returns<PostRow[]>();
@@ -53,28 +55,47 @@ export default async function PostsPage() {
             <li key={post.id}>
               <Link
                 href={`/posts/${post.id}`}
-                className="block rounded-2xl border border-goguma-100 bg-white p-4 transition hover:border-goguma-300 hover:shadow-sm"
+                className="flex gap-4 rounded-2xl border border-goguma-100 bg-white p-4 transition hover:border-goguma-300 hover:shadow-sm"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <h2 className="text-lg font-bold text-goguma-900">
-                    {post.title}
-                  </h2>
-                  <span className="shrink-0 font-bold text-goguma-600">
-                    {formatPrice(post.price)}
-                  </span>
+                {/* 대표 사진 썸네일 (없으면 고구마 로고 자리표시) */}
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-goguma-50">
+                  {post.images && post.images.length > 0 ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={postImageUrl(post.images[0])}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <GogumaLogo size={32} />
+                  )}
                 </div>
-                <p className="mt-1 line-clamp-2 text-sm text-goguma-700">
-                  {post.content}
-                </p>
-                <div className="mt-3 flex items-center gap-3 text-xs text-goguma-500">
-                  <span className="font-medium text-skin-500">
-                    {post.author?.nickname ?? "알 수 없음"}
-                  </span>
-                  <span>· {timeAgo(post.created_at)}</span>
-                  <span className="ml-auto flex items-center gap-3">
-                    <span>❤️ {post.likes?.[0]?.count ?? 0}</span>
-                    <span>💬 {post.comments?.[0]?.count ?? 0}</span>
-                  </span>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <h2 className="truncate text-lg font-bold text-goguma-900">
+                      {post.title}
+                    </h2>
+                    <span className="shrink-0 font-bold text-goguma-600">
+                      {formatPrice(post.price)}
+                    </span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm text-goguma-700">
+                    {post.content}
+                  </p>
+                  <div className="mt-3 flex items-center gap-3 text-xs text-goguma-500">
+                    <span className="font-medium text-skin-500">
+                      {post.author?.nickname ?? "알 수 없음"}
+                    </span>
+                    <span>· {timeAgo(post.created_at)}</span>
+                    <span className="ml-auto flex items-center gap-3">
+                      {post.images && post.images.length > 1 && (
+                        <span>🖼 {post.images.length}</span>
+                      )}
+                      <span>❤️ {post.likes?.[0]?.count ?? 0}</span>
+                      <span>💬 {post.comments?.[0]?.count ?? 0}</span>
+                    </span>
+                  </div>
                 </div>
               </Link>
             </li>

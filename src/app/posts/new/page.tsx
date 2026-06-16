@@ -17,7 +17,7 @@ export default async function NewPostPage() {
       <h1 className="mb-6 text-2xl font-extrabold text-skin-600">
         판매글 쓰기
       </h1>
-      <NewPostForm />
+      <NewPostForm userId={userId} />
     </div>
   );
 }

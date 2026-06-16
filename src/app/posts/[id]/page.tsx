@@ -6,6 +6,7 @@ import { toggleLike } from "@/app/posts/actions";
 import { CommentForm } from "./comment-form";
 import { PostOwnerActions } from "./post-owner-actions";
 import { CommentItem } from "./comment-item";
+import { PostGallery } from "./post-gallery";
 
 type PostDetail = {
   id: string;
@@ -14,6 +15,7 @@ type PostDetail = {
   price: number;
   content: string;
   created_at: string;
+  images: string[];
   author: { nickname: string } | null;
   likes: { count: number }[];
   comments: { count: number }[];
@@ -38,7 +40,7 @@ export default async function PostDetailPage({
   const { data: post } = await supabase
     .from("posts")
     .select(
-      "id, author_id, title, price, content, created_at, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
+      "id, author_id, title, price, content, created_at, images, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
     )
     .eq("id", id)
     .maybeSingle<PostDetail>();
@@ -91,6 +93,14 @@ export default async function PostDetailPage({
         <p className="mt-4 text-2xl font-bold text-goguma-600">
           {formatPrice(post.price)}
         </p>
+
+        {/* 사진 갤러리 (사진이 있을 때만) */}
+        {post.images && post.images.length > 0 && (
+          <div className="mt-5">
+            <PostGallery paths={post.images} />
+          </div>
+        )}
+
         <p className="mt-4 whitespace-pre-wrap leading-relaxed text-goguma-800">
           {post.content}
         </p>

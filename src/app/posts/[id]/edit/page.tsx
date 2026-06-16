@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EditPostForm } from "./edit-post-form";
+import { ImagesOnlyForm } from "./images-only-form";
 
 type PostEdit = {
   id: string;
@@ -9,6 +10,7 @@ type PostEdit = {
   title: string;
   price: number;
   content: string;
+  images: string[];
 };
 
 export default async function EditPostPage({
@@ -27,7 +29,7 @@ export default async function EditPostPage({
   // 글 가져오기
   const { data: post } = await supabase
     .from("posts")
-    .select("id, author_id, title, price, content")
+    .select("id, author_id, title, price, content, images")
     .eq("id", id)
     .maybeSingle<PostEdit>();
 
@@ -44,21 +46,28 @@ export default async function EditPostPage({
     .select("id", { count: "exact", head: true })
     .eq("post_id", id);
 
+  // 댓글이 있으면 글 내용(제목·내용·가격)은 수정할 수 없지만, 사진은 바꿀 수 있어요.
   if ((count ?? 0) > 0) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-12 text-center">
-        <p className="text-3xl">🔒</p>
-        <p className="mt-3 text-goguma-800">
-          댓글이 있는 글은 수정할 수 없어요.
-          <br />
-          댓글을 모두 삭제한 뒤 다시 시도해 주세요.
-        </p>
+      <div className="mx-auto max-w-xl px-4 py-8">
         <Link
           href={`/posts/${id}`}
-          className="mt-5 inline-block rounded-xl bg-goguma-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-goguma-600"
+          className="mb-4 inline-block text-sm text-goguma-600 hover:underline"
         >
-          글로 돌아가기
+          ← 글로 돌아가기
         </Link>
+        <h1 className="mb-2 text-2xl font-extrabold text-skin-600">
+          사진 수정
+        </h1>
+        <p className="mb-6 rounded-xl bg-goguma-50 px-4 py-3 text-sm text-goguma-700">
+          💬 댓글이 달린 글이라 <b>제목·내용·가격은 바꿀 수 없어요.</b> 사진은
+          자유롭게 추가하거나 지울 수 있어요.
+        </p>
+        <ImagesOnlyForm
+          postId={post.id}
+          userId={userId}
+          initialPaths={post.images ?? []}
+        />
       </div>
     );
   }
@@ -74,9 +83,11 @@ export default async function EditPostPage({
       <h1 className="mb-6 text-2xl font-extrabold text-skin-600">판매글 수정</h1>
       <EditPostForm
         postId={post.id}
+        userId={userId}
         defaultTitle={post.title}
         defaultPrice={post.price}
         defaultContent={post.content}
+        defaultImages={post.images ?? []}
       />
     </div>
   );

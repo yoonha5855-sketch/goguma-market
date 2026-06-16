@@ -2,19 +2,24 @@
 
 import { useActionState } from "react";
 import { updatePost, type PostState } from "@/app/posts/actions";
+import { ImageUploader } from "@/app/posts/image-uploader";
 
 const initialState: PostState = {};
 
 export function EditPostForm({
   postId,
+  userId,
   defaultTitle,
   defaultPrice,
   defaultContent,
+  defaultImages,
 }: {
   postId: string;
+  userId: string;
   defaultTitle: string;
   defaultPrice: number;
   defaultContent: string;
+  defaultImages: string[];
 }) {
   // postId 를 묶어 (prevState, formData) 형태로 맞춥니다.
   const action = updatePost.bind(null, postId);
@@ -22,6 +27,7 @@ export function EditPostForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      <ImageUploader userId={userId} initialPaths={defaultImages} />
       <div className="flex flex-col gap-1.5">
         <label htmlFor="title" className="text-sm font-medium text-goguma-800">
           제목

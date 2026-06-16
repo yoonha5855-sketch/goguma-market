@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { POST_IMAGES_BUCKET, MAX_POST_IMAGES } from "@/lib/storage";
 
 export type PostState = { error?: string };
 
@@ -11,6 +12,23 @@ async function getUserId() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   return (data?.claims?.sub as string | undefined) ?? null;
+}
+
+// 폼에서 넘어온 사진 경로들을 안전하게 읽어옵니다.
+// - 본인 폴더("userId/...")로 시작하는 것만 인정 (남의 사진 끼워넣기 방지)
+// - 최대 장수 제한
+function readImagePaths(formData: FormData, userId: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const v of formData.getAll("images")) {
+    const path = String(v).trim();
+    if (!path || seen.has(path)) continue;
+    if (!path.startsWith(`${userId}/`)) continue;
+    seen.add(path);
+    result.push(path);
+    if (result.length >= MAX_POST_IMAGES) break;
+  }
+  return result;
 }
 
 // 판매글 작성
@@ -31,9 +49,11 @@ export async function createPost(
     return { error: "제목과 내용을 입력해 주세요." };
   }
 
+  const images = readImagePaths(formData, userId);
+
   const { data, error } = await supabase
     .from("posts")
-    .insert({ author_id: userId, title, content, price })
+    .insert({ author_id: userId, title, content, price, images })
     .select("id")
     .single();
 
@@ -41,6 +61,49 @@ export async function createPost(
 
   revalidatePath("/posts");
   redirect(`/posts/${data.id}`);
+}
+
+// 사진만 저장 (제목·내용은 건드리지 않음)
+// 댓글이 있어도 사진은 추가/관리할 수 있도록, 여기서는 댓글 검사를 하지 않습니다.
+export async function updatePostImages(
+  postId: string,
+  _prev: PostState,
+  formData: FormData
+): Promise<PostState> {
+  const supabase = await createClient();
+  const userId = await getUserId();
+  if (!userId) return { error: "로그인이 필요해요." };
+
+  const images = readImagePaths(formData, userId);
+
+  // 기존 사진 목록 확보 (본인 글만) — 빠진 사진은 보관함에서 정리하기 위함
+  const { data: before } = await supabase
+    .from("posts")
+    .select("images")
+    .eq("id", postId)
+    .eq("author_id", userId)
+    .maybeSingle<{ images: string[] }>();
+
+  if (!before) return { error: "본인 글의 사진만 바꿀 수 있어요." };
+
+  // RLS 로 본인 글만 수정됩니다.
+  const { error } = await supabase
+    .from("posts")
+    .update({ images })
+    .eq("id", postId)
+    .eq("author_id", userId);
+
+  if (error) return { error: "사진 저장에 실패했어요: " + error.message };
+
+  // 더 이상 쓰지 않는 사진은 보관함에서 삭제
+  const removed = (before.images ?? []).filter((p) => !images.includes(p));
+  if (removed.length > 0) {
+    await supabase.storage.from(POST_IMAGES_BUCKET).remove(removed);
+  }
+
+  revalidatePath("/posts");
+  revalidatePath(`/posts/${postId}`);
+  redirect(`/posts/${postId}`);
 }
 
 // 댓글 작성
@@ -94,14 +157,29 @@ export async function updatePost(
     return { error: "제목과 내용을 입력해 주세요." };
   }
 
+  const images = readImagePaths(formData, userId);
+
+  // 기존 사진 목록을 가져와서, 이번에 빠진 사진은 보관함에서 정리합니다.
+  const { data: before } = await supabase
+    .from("posts")
+    .select("images")
+    .eq("id", postId)
+    .maybeSingle<{ images: string[] }>();
+
   // RLS 덕분에 본인 글만 수정됩니다.
   const { error } = await supabase
     .from("posts")
-    .update({ title, content, price })
+    .update({ title, content, price, images })
     .eq("id", postId)
     .eq("author_id", userId);
 
   if (error) return { error: "수정에 실패했어요: " + error.message };
+
+  // 더 이상 쓰지 않는 사진을 보관함에서 삭제 (본인 폴더만 RLS 로 허용됨)
+  const removed = (before?.images ?? []).filter((p) => !images.includes(p));
+  if (removed.length > 0) {
+    await supabase.storage.from(POST_IMAGES_BUCKET).remove(removed);
+  }
 
   revalidatePath("/posts");
   revalidatePath(`/posts/${postId}`);
@@ -151,6 +229,13 @@ export async function deletePost(
     };
   }
 
+  // 삭제 전에 이 글의 사진 목록을 확보 (삭제 후 보관함 정리에 사용)
+  const { data: before } = await supabase
+    .from("posts")
+    .select("images")
+    .eq("id", postId)
+    .maybeSingle<{ images: string[] }>();
+
   // RLS 덕분에 본인 글만 삭제됩니다.
   const { error } = await supabase
     .from("posts")
@@ -159,6 +244,11 @@ export async function deletePost(
     .eq("author_id", userId);
 
   if (error) return { error: "삭제에 실패했어요: " + error.message };
+
+  // 글에 딸린 사진도 보관함에서 함께 정리
+  if (before?.images && before.images.length > 0) {
+    await supabase.storage.from(POST_IMAGES_BUCKET).remove(before.images);
+  }
 
   revalidatePath("/posts");
   redirect("/posts");
