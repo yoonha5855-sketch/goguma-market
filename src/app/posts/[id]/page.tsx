@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice, timeAgo } from "@/lib/format";
+import { categoryLabel } from "@/lib/categories";
 import { toggleLike } from "@/app/posts/actions";
 import { CommentForm } from "./comment-form";
 import { PostOwnerActions } from "./post-owner-actions";
@@ -16,6 +17,7 @@ type PostDetail = {
   content: string;
   created_at: string;
   images: string[];
+  category: string;
   author: { nickname: string } | null;
   likes: { count: number }[];
   comments: { count: number }[];
@@ -40,7 +42,7 @@ export default async function PostDetailPage({
   const { data: post } = await supabase
     .from("posts")
     .select(
-      "id, author_id, title, price, content, created_at, images, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
+      "id, author_id, title, price, content, created_at, images, category, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
     )
     .eq("id", id)
     .maybeSingle<PostDetail>();
@@ -83,7 +85,15 @@ export default async function PostDetailPage({
 
       {/* 글 본문 */}
       <article className="rounded-2xl border border-goguma-100 bg-white p-6">
-        <h1 className="text-2xl font-extrabold text-goguma-900">{post.title}</h1>
+        <Link
+          href={`/posts?category=${encodeURIComponent(post.category)}`}
+          className="inline-block rounded-full bg-goguma-100 px-3 py-1 text-xs font-semibold text-goguma-700 transition hover:bg-goguma-200"
+        >
+          {categoryLabel(post.category)}
+        </Link>
+        <h1 className="mt-2 text-2xl font-extrabold text-goguma-900">
+          {post.title}
+        </h1>
         <div className="mt-2 flex items-center gap-2 text-sm text-goguma-500">
           <span className="font-medium text-skin-500">
             {post.author?.nickname ?? "알 수 없음"}

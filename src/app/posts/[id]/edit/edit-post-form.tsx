@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { updatePost, type PostState } from "@/app/posts/actions";
 import { ImageUploader } from "@/app/posts/image-uploader";
+import { CategorySelect } from "@/app/posts/category-select";
 
 const initialState: PostState = {};
 
@@ -13,6 +14,7 @@ export function EditPostForm({
   defaultPrice,
   defaultContent,
   defaultImages,
+  defaultCategory,
 }: {
   postId: string;
   userId: string;
@@ -20,6 +22,7 @@ export function EditPostForm({
   defaultPrice: number;
   defaultContent: string;
   defaultImages: string[];
+  defaultCategory: string;
 }) {
   // postId 를 묶어 (prevState, formData) 형태로 맞춥니다.
   const action = updatePost.bind(null, postId);
@@ -28,6 +31,7 @@ export function EditPostForm({
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <ImageUploader userId={userId} initialPaths={defaultImages} />
+      <CategorySelect defaultValue={defaultCategory} />
       <div className="flex flex-col gap-1.5">
         <label htmlFor="title" className="text-sm font-medium text-goguma-800">
           제목

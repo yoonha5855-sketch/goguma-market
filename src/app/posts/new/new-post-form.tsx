@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { createPost, type PostState } from "@/app/posts/actions";
 import { ImageUploader } from "@/app/posts/image-uploader";
+import { CategorySelect } from "@/app/posts/category-select";
 
 const initialState: PostState = {};
 
@@ -12,6 +13,7 @@ export function NewPostForm({ userId }: { userId: string }) {
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <ImageUploader userId={userId} />
+      <CategorySelect />
       <div className="flex flex-col gap-1.5">
         <label htmlFor="title" className="text-sm font-medium text-goguma-800">
           제목

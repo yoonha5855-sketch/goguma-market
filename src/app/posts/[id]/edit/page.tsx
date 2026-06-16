@@ -11,6 +11,7 @@ type PostEdit = {
   price: number;
   content: string;
   images: string[];
+  category: string;
 };
 
 export default async function EditPostPage({
@@ -29,7 +30,7 @@ export default async function EditPostPage({
   // 글 가져오기
   const { data: post } = await supabase
     .from("posts")
-    .select("id, author_id, title, price, content, images")
+    .select("id, author_id, title, price, content, images, category")
     .eq("id", id)
     .maybeSingle<PostEdit>();
 
@@ -88,6 +89,7 @@ export default async function EditPostPage({
         defaultPrice={post.price}
         defaultContent={post.content}
         defaultImages={post.images ?? []}
+        defaultCategory={post.category}
       />
     </div>
   );

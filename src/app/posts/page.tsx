@@ -2,6 +2,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice, timeAgo } from "@/lib/format";
 import { postImageUrl } from "@/lib/storage";
+import {
+  POST_CATEGORIES,
+  categoryLabel,
+  isPostCategory,
+} from "@/lib/categories";
 import { GogumaLogo } from "@/components/GogumaLogo";
 
 type PostRow = {
@@ -11,24 +16,44 @@ type PostRow = {
   content: string;
   created_at: string;
   images: string[];
+  category: string;
   author: { nickname: string } | null;
   likes: { count: number }[];
   comments: { count: number }[];
 };
 
-export default async function PostsPage() {
+export default async function PostsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const { category } = await searchParams;
+  // 정해진 카테고리일 때만 거름. 그 외(없음/이상값)는 전체 보기.
+  const activeCategory = category && isPostCategory(category) ? category : null;
+
   const supabase = await createClient();
-  const { data: posts } = await supabase
+  let query = supabase
     .from("posts")
     .select(
-      "id, title, price, content, created_at, images, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
+      "id, title, price, content, created_at, images, category, author:profiles!posts_author_id_fkey(nickname), likes(count), comments(count)"
     )
-    .order("created_at", { ascending: false })
-    .returns<PostRow[]>();
+    .order("created_at", { ascending: false });
+
+  if (activeCategory) {
+    query = query.eq("category", activeCategory);
+  }
+
+  const { data: posts } = await query.returns<PostRow[]>();
+
+  // 필터 탭 목록: 전체 + 5개 카테고리
+  const tabs: { label: string; value: string | null }[] = [
+    { label: "전체", value: null },
+    ...POST_CATEGORIES.map((c) => ({ label: categoryLabel(c), value: c })),
+  ];
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between">
         <h1 className="text-2xl font-extrabold text-skin-600">판매글</h1>
         <Link
           href="/posts/new"
@@ -38,10 +63,38 @@ export default async function PostsPage() {
         </Link>
       </div>
 
+      {/* 카테고리 필터 탭 */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        {tabs.map((tab) => {
+          const isActive =
+            (tab.value ?? null) === (activeCategory ?? null);
+          const href = tab.value
+            ? `/posts?category=${encodeURIComponent(tab.value)}`
+            : "/posts";
+          return (
+            <Link
+              key={tab.label}
+              href={href}
+              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                isActive
+                  ? "bg-goguma-500 text-white"
+                  : "border border-goguma-200 text-goguma-700 hover:bg-goguma-100"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </div>
+
       {!posts || posts.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-goguma-200 py-16 text-center">
           <GogumaLogo size={48} />
-          <p className="text-goguma-700">아직 올라온 판매글이 없어요.</p>
+          <p className="text-goguma-700">
+            {activeCategory
+              ? `'${categoryLabel(activeCategory)}' 카테고리에 글이 아직 없어요.`
+              : "아직 올라온 판매글이 없어요."}
+          </p>
           <Link
             href="/posts/new"
             className="font-semibold text-skin-600 hover:underline"
@@ -80,9 +133,14 @@ export default async function PostsPage() {
                       {formatPrice(post.price)}
                     </span>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-sm text-goguma-700">
-                    {post.content}
-                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="shrink-0 rounded-full bg-goguma-100 px-2 py-0.5 text-[11px] font-semibold text-goguma-700">
+                      {categoryLabel(post.category)}
+                    </span>
+                    <p className="line-clamp-1 text-sm text-goguma-700">
+                      {post.content}
+                    </p>
+                  </div>
                   <div className="mt-3 flex items-center gap-3 text-xs text-goguma-500">
                     <span className="font-medium text-skin-500">
                       {post.author?.nickname ?? "알 수 없음"}

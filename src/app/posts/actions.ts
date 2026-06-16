@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { POST_IMAGES_BUCKET, MAX_POST_IMAGES } from "@/lib/storage";
+import { isPostCategory, DEFAULT_CATEGORY } from "@/lib/categories";
+
+// 폼에서 넘어온 카테고리를 안전하게 읽어옵니다 (정해진 5개가 아니면 '기타').
+function readCategory(formData: FormData): string {
+  const raw = String(formData.get("category") ?? "").trim();
+  return isPostCategory(raw) ? raw : DEFAULT_CATEGORY;
+}
 
 export type PostState = { error?: string };
 
@@ -50,10 +57,11 @@ export async function createPost(
   }
 
   const images = readImagePaths(formData, userId);
+  const category = readCategory(formData);
 
   const { data, error } = await supabase
     .from("posts")
-    .insert({ author_id: userId, title, content, price, images })
+    .insert({ author_id: userId, title, content, price, images, category })
     .select("id")
     .single();
 
@@ -158,6 +166,7 @@ export async function updatePost(
   }
 
   const images = readImagePaths(formData, userId);
+  const category = readCategory(formData);
 
   // 기존 사진 목록을 가져와서, 이번에 빠진 사진은 보관함에서 정리합니다.
   const { data: before } = await supabase
@@ -169,7 +178,7 @@ export async function updatePost(
   // RLS 덕분에 본인 글만 수정됩니다.
   const { error } = await supabase
     .from("posts")
-    .update({ title, content, price, images })
+    .update({ title, content, price, images, category })
     .eq("id", postId)
     .eq("author_id", userId);
 
