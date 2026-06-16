@@ -58,16 +58,17 @@ export default async function EditPostPage({
           ← 글로 돌아가기
         </Link>
         <h1 className="mb-2 text-2xl font-extrabold text-skin-600">
-          사진 수정
+          사진·카테고리 수정
         </h1>
         <p className="mb-6 rounded-xl bg-goguma-50 px-4 py-3 text-sm text-goguma-700">
-          💬 댓글이 달린 글이라 <b>제목·내용·가격은 바꿀 수 없어요.</b> 사진은
-          자유롭게 추가하거나 지울 수 있어요.
+          💬 댓글이 달린 글이라 <b>제목·내용·가격은 바꿀 수 없어요.</b> 사진과
+          카테고리는 자유롭게 바꿀 수 있어요.
         </p>
         <ImagesOnlyForm
           postId={post.id}
           userId={userId}
           initialPaths={post.images ?? []}
+          defaultCategory={post.category}
         />
       </div>
     );

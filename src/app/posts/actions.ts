@@ -71,8 +71,8 @@ export async function createPost(
   redirect(`/posts/${data.id}`);
 }
 
-// 사진만 저장 (제목·내용은 건드리지 않음)
-// 댓글이 있어도 사진은 추가/관리할 수 있도록, 여기서는 댓글 검사를 하지 않습니다.
+// 사진·카테고리만 저장 (제목·내용·가격은 건드리지 않음)
+// 댓글이 있어도 사진과 카테고리는 바꿀 수 있도록, 여기서는 댓글 검사를 하지 않습니다.
 export async function updatePostImages(
   postId: string,
   _prev: PostState,
@@ -83,6 +83,7 @@ export async function updatePostImages(
   if (!userId) return { error: "로그인이 필요해요." };
 
   const images = readImagePaths(formData, userId);
+  const category = readCategory(formData);
 
   // 기존 사진 목록 확보 (본인 글만) — 빠진 사진은 보관함에서 정리하기 위함
   const { data: before } = await supabase
@@ -95,13 +96,14 @@ export async function updatePostImages(
   if (!before) return { error: "본인 글의 사진만 바꿀 수 있어요." };
 
   // RLS 로 본인 글만 수정됩니다.
+  // (제목·내용·가격은 바꾸지 않으므로 댓글이 있어도 DB 보호 규칙을 통과합니다.)
   const { error } = await supabase
     .from("posts")
-    .update({ images })
+    .update({ images, category })
     .eq("id", postId)
     .eq("author_id", userId);
 
-  if (error) return { error: "사진 저장에 실패했어요: " + error.message };
+  if (error) return { error: "저장에 실패했어요: " + error.message };
 
   // 더 이상 쓰지 않는 사진은 보관함에서 삭제
   const removed = (before.images ?? []).filter((p) => !images.includes(p));
