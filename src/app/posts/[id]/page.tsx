@@ -28,6 +28,7 @@ type CommentRow = {
   author_id: string;
   content: string;
   created_at: string;
+  parent_id: string | null;
   author: { nickname: string } | null;
 };
 
@@ -51,7 +52,9 @@ export default async function PostDetailPage({
 
   const { data: comments } = await supabase
     .from("comments")
-    .select("id, author_id, content, created_at, author:profiles(nickname)")
+    .select(
+      "id, author_id, content, created_at, parent_id, author:profiles(nickname)"
+    )
     .eq("post_id", id)
     .order("created_at", { ascending: true })
     .returns<CommentRow[]>();
@@ -73,6 +76,18 @@ export default async function PostDetailPage({
   const likeCount = post.likes?.[0]?.count ?? 0;
   const commentCount = post.comments?.[0]?.count ?? 0;
   const isAuthor = userId === post.author_id;
+
+  // 댓글을 '최상위 댓글'과 그 아래 '답글'로 묶습니다.
+  const allComments = comments ?? [];
+  const roots = allComments.filter((c) => !c.parent_id);
+  const repliesByParent = new Map<string, CommentRow[]>();
+  for (const c of allComments) {
+    if (c.parent_id) {
+      const list = repliesByParent.get(c.parent_id) ?? [];
+      list.push(c);
+      repliesByParent.set(c.parent_id, list);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -156,13 +171,18 @@ export default async function PostDetailPage({
         )}
 
         <ul className="flex flex-col gap-3">
-          {comments && comments.length > 0 ? (
-            comments.map((c) => (
+          {roots.length > 0 ? (
+            roots.map((c) => (
               <CommentItem
                 key={c.id}
                 comment={c}
                 postId={post.id}
                 canModify={userId === c.author_id}
+                canReply={!!userId}
+                replies={(repliesByParent.get(c.id) ?? []).map((r) => ({
+                  comment: r,
+                  canModify: userId === r.author_id,
+                }))}
               />
             ))
           ) : (

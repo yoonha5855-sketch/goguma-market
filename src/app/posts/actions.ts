@@ -128,9 +128,12 @@ export async function createComment(
   const content = String(formData.get("content") ?? "").trim();
   if (!content) return;
 
+  // 답글이면 parent_id 가 함께 넘어옵니다 (일반 댓글이면 비어 있음 → null).
+  const parentId = String(formData.get("parent_id") ?? "").trim() || null;
+
   await supabase
     .from("comments")
-    .insert({ post_id: postId, author_id: userId, content });
+    .insert({ post_id: postId, author_id: userId, content, parent_id: parentId });
 
   revalidatePath(`/posts/${postId}`);
 }
